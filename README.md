@@ -30,3 +30,30 @@ Detect changed objects (like parked cars) by comparing two temporal point cloud 
          source pen3d_env/bin/activate  # On Windows: pen3d_env\Scripts\activate
     
  3. Clone repository
+
+        git clone https://github.com/abinandha8086-lgtm/change-detection-using-lidar-data.git
+        cd change-detection-using-lidar-data
+
+3. Install dependencies
+   
+       pip install -r requirements.txt
+
+## To run
+
+1. Generate Synthetic LiDAR Data
+
+       python generate_lidar_data.py
+   
+Output: 
+depth_captures/
+├── ultimate_scene_1_250m_detailed.ply   
+└── ultimate_scene_2_250m_3people.ply     
+
+2. Run Change Detection
+
+       python run_lidar_change.py
+
+
+# Result
+![Change-detected-redpoints](<img width="953" height="592" alt="Screenshot from 2026-01-02 15-26-49" src="https://github.com/user-attachments/assets/b86a538d-63a8-4c1e-bf96-fac93b6576ea" />)
+

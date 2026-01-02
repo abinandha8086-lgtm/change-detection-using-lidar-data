@@ -55,5 +55,5 @@ depth_captures/
 
 
 # Result
-![Change-detected-redpoints](<img width="953" height="592" alt="Screenshot from 2026-01-02 15-26-49" src="https://github.com/user-attachments/assets/b86a538d-63a8-4c1e-bf96-fac93b6576ea" />)
+<img width="953" height="592" alt="Screenshot from 2026-01-02 15-26-49" src="https://github.com/user-attachments/assets/b86a538d-63a8-4c1e-bf96-fac93b6576ea" />
 

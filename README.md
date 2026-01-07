@@ -55,5 +55,6 @@ depth_captures/
 
 
 # Result
-<img width="953" height="592" alt="Screenshot from 2026-01-02 15-26-49" src="https://github.com/user-attachments/assets/b86a538d-63a8-4c1e-bf96-fac93b6576ea" />
+<img width="1683" height="765" alt="Screenshot from 2026-01-06 17-46-06" src="https://github.com/user-attachments/assets/61a42a1c-40d5-4a84-bf25-2df367213c8c" />
+
 

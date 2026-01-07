@@ -23,14 +23,21 @@ CAR_HEIGHT = 1.55 * 1.35  # 2.09m
 CAR_ROOF_HEIGHT = 1.25 * 1.35  # 1.69m
 CAR_BUMPER_HEIGHT = 0.55 * 1.35  # 0.74m
 
+# -------- TRUCK DIMENSIONS (LARGE COMMERCIAL TRUCK) --------
+TRUCK_LENGTH = 8.5 * 1.35  # 11.48m (large truck)
+TRUCK_WIDTH = 2.5 * 1.35   # 3.38m
+TRUCK_HEIGHT = 3.5 * 1.35  # 4.73m
+TRUCK_CABIN_HEIGHT = 2.8 * 1.35  # 3.78m
+TRUCK_CARGO_HEIGHT = 3.2 * 1.35  # 4.32m
+
 # -------- PEDESTRIAN DIMENSIONS (ULTRA-ENLARGED) --------
-PERSON_HEIGHT = 1.75 * 1.40  # 2.45m (much taller, more visible)
-PERSON_SHOULDER_WIDTH = 0.50 * 1.40  # 0.70m
-PERSON_CHEST_WIDTH = 0.35 * 1.40  # 0.49m
-PERSON_DEPTH = 0.28 * 1.40  # 0.39m
-PERSON_HEAD_RADIUS = 0.12 * 1.40  # 0.168m
-PERSON_ARM_LENGTH = 0.75 * 1.40  # 1.05m
-PERSON_LEG_LENGTH = 0.95 * 1.40  # 1.33m
+PERSON_HEIGHT = 1.75 * 1.80  # 3.15m (MUCH taller - 80% larger!)
+PERSON_SHOULDER_WIDTH = 0.50 * 1.80  # 0.90m
+PERSON_CHEST_WIDTH = 0.35 * 1.80  # 0.63m
+PERSON_DEPTH = 0.28 * 1.80  # 0.50m
+PERSON_HEAD_RADIUS = 0.12 * 1.80  # 0.216m
+PERSON_ARM_LENGTH = 0.75 * 1.80  # 1.35m
+PERSON_LEG_LENGTH = 0.95 * 1.80  # 1.71m
 
 # -------- TREE DIMENSIONS (ULTRA-ENLARGED) --------
 TREE_TRUNK_RADIUS = 0.35 * 1.40  # 0.49m
@@ -63,6 +70,118 @@ midas = torch.hub.load(
 transform = torch.hub.load(
     "intel-isl/MiDaS", "transforms", trust_repo=True
 ).dpt_transform
+
+# ============= LARGE COMMERCIAL TRUCK MODEL =============
+def generate_commercial_truck(truck_x, truck_y, truck_z, truck_yaw=0.0):
+    """Generate large commercial truck (cargo/delivery truck)."""
+    points = []
+    heights = []
+    
+    # -------- CABIN (front section) --------
+    for _ in range(4000):
+        local_x = np.random.uniform(TRUCK_LENGTH/2 - 2.8, TRUCK_LENGTH/2)
+        local_y = np.random.uniform(-TRUCK_WIDTH/2, TRUCK_WIDTH/2)
+        z_local = np.random.uniform(0.0, TRUCK_CABIN_HEIGHT)
+        
+        cos_y = np.cos(truck_yaw)
+        sin_y = np.sin(truck_yaw)
+        x = truck_x + local_x * cos_y - local_y * sin_y
+        y = truck_y + local_x * sin_y + local_y * cos_y
+        z = truck_z + z_local
+        
+        points.append([x, y, z])
+        heights.append(z)
+    
+    # -------- CARGO BOX (rear section - large rectangular box) --------
+    for _ in range(8000):
+        local_x = np.random.uniform(-TRUCK_LENGTH/2, TRUCK_LENGTH/2 - 2.8)
+        local_y = np.random.uniform(-TRUCK_WIDTH/2, TRUCK_WIDTH/2)
+        z_local = np.random.uniform(0.0, TRUCK_CARGO_HEIGHT)
+        
+        cos_y = np.cos(truck_yaw)
+        sin_y = np.sin(truck_yaw)
+        x = truck_x + local_x * cos_y - local_y * sin_y
+        y = truck_y + local_x * sin_y + local_y * cos_y
+        z = truck_z + z_local
+        
+        points.append([x, y, z])
+        heights.append(z)
+    
+    # -------- WINDSHIELD --------
+    for _ in range(600):
+        local_x = np.random.uniform(TRUCK_LENGTH/2 - 2.2, TRUCK_LENGTH/2 - 0.3)
+        local_y = np.random.uniform(-TRUCK_WIDTH/2 + 0.2, TRUCK_WIDTH/2 - 0.2)
+        z_local = TRUCK_CABIN_HEIGHT - 0.8 + (local_x / 3.0) * 0.15
+        
+        cos_y = np.cos(truck_yaw)
+        sin_y = np.sin(truck_yaw)
+        x = truck_x + local_x * cos_y - local_y * sin_y
+        y = truck_y + local_x * sin_y + local_y * cos_y
+        z = truck_z + z_local
+        
+        points.append([x, y, z])
+        heights.append(z)
+    
+    # -------- WHEELS (6 wheels - truck) --------
+    wheel_positions = [
+        # Front wheels
+        (TRUCK_LENGTH/2 - 1.5, -TRUCK_WIDTH/2 - 0.4),
+        (TRUCK_LENGTH/2 - 1.5, TRUCK_WIDTH/2 + 0.4),
+        # Middle rear wheels
+        (-TRUCK_LENGTH/2 + 2.5, -TRUCK_WIDTH/2 - 0.4),
+        (-TRUCK_LENGTH/2 + 2.5, TRUCK_WIDTH/2 + 0.4),
+        # Back rear wheels
+        (-TRUCK_LENGTH/2 + 1.0, -TRUCK_WIDTH/2 - 0.4),
+        (-TRUCK_LENGTH/2 + 1.0, TRUCK_WIDTH/2 + 0.4),
+    ]
+    
+    for wx, wy in wheel_positions:
+        wheel_radius = 0.65
+        wheel_width = 0.35
+        
+        for _ in range(500):
+            theta = np.random.uniform(0, 2*np.pi)
+            r = wheel_radius * (0.8 + 0.2*np.random.rand())
+            z_offset = np.random.uniform(-wheel_width/2, wheel_width/2)
+            
+            local_x = wx + r * np.cos(theta)
+            local_y = wy + z_offset
+            z_local = wheel_radius
+            
+            cos_y = np.cos(truck_yaw)
+            sin_y = np.sin(truck_yaw)
+            x = truck_x + local_x * cos_y - local_y * sin_y
+            y = truck_y + local_x * sin_y + local_y * cos_y
+            z = truck_z + z_local
+            
+            points.append([x, y, z])
+            heights.append(z)
+    
+    # -------- SIDE MIRRORS --------
+    mirror_positions = [
+        (TRUCK_LENGTH/2 - 1.5, -TRUCK_WIDTH/2 - 0.35),
+        (TRUCK_LENGTH/2 - 1.5, TRUCK_WIDTH/2 + 0.35),
+    ]
+    
+    for mx, my in mirror_positions:
+        for _ in range(200):
+            theta = np.random.uniform(0, 2*np.pi)
+            r = 0.15 * (0.7 + 0.3*np.random.rand())
+            
+            local_x = mx + r * np.cos(theta)
+            local_y = my + r * np.sin(theta)
+            z_local = TRUCK_CABIN_HEIGHT - 0.5
+            
+            cos_y = np.cos(truck_yaw)
+            sin_y = np.sin(truck_yaw)
+            x = truck_x + local_x * cos_y - local_y * sin_y
+            y = truck_y + local_x * sin_y + local_y * cos_y
+            z = truck_z + z_local
+            
+            points.append([x, y, z])
+            heights.append(z)
+    
+    return points, heights
 
 # ============= ULTRA-HIGH-DETAIL CAR MODEL =============
 def generate_sedan_car(car_x, car_y, car_z, car_yaw=0.0):
@@ -198,47 +317,50 @@ def generate_sedan_car(car_x, car_y, car_z, car_yaw=0.0):
 
 # ============= ULTRA-DETAILED PEDESTRIAN MODEL (MEGA-ENLARGED) =============
 def generate_detailed_pedestrian(person_x, person_y, person_z, pose="standing"):
-    """Generate mega-enlarged, highly visible human."""
+    """Generate MASSIVE, highly visible human with clear anatomical shape (80% larger)."""
     points = []
     heights = []
     
-    # -------- HEAD (mega-enlarged sphere) --------
-    for _ in range(800):
+    # -------- HEAD (massive sphere - very dense) --------
+    for _ in range(1200):
         phi = np.random.uniform(0, np.pi)
         theta = np.random.uniform(0, 2*np.pi)
         r = PERSON_HEAD_RADIUS * (0.75 + 0.25*np.random.rand())
         
         x = person_x + r * np.sin(phi) * np.cos(theta)
         y = person_y + r * np.sin(phi) * np.sin(theta)
-        z = person_z + PERSON_HEIGHT - 0.26 + r * np.cos(phi)
+        z = person_z + PERSON_HEIGHT - 0.35 + r * np.cos(phi)
         
         points.append([x, y, z])
         heights.append(z)
     
-    # -------- NECK (mega-enlarged) --------
-    for _ in range(200):
+    # -------- NECK (thicker, more visible) --------
+    for _ in range(350):
         theta = np.random.uniform(0, 2*np.pi)
-        h = np.random.uniform(-0.26, 0.0)
-        r_neck = 0.11
+        h = np.random.uniform(-0.35, 0.0)
+        r_neck = 0.14  # Thicker neck
         
         x = person_x + r_neck * np.cos(theta)
         y = person_y + r_neck * np.sin(theta)
-        z = person_z + PERSON_HEIGHT - 0.26 + h
+        z = person_z + PERSON_HEIGHT - 0.35 + h
         
         points.append([x, y, z])
         heights.append(z)
     
-    # -------- SHOULDERS/TORSO (mega-enlarged, detailed) --------
-    for _ in range(1200):
+    # -------- SHOULDERS/UPPER TORSO (massive, very dense) --------
+    for _ in range(2000):
         theta = np.random.uniform(0, 2*np.pi)
-        h = np.random.uniform(0.30, 1.60)
+        h = np.random.uniform(0.40, 2.10)
         
-        if h < 0.50 or h > 1.30:
-            r_torso = PERSON_SHOULDER_WIDTH/2.2 * (0.7 + 0.2*np.random.rand())
-        elif h < 0.77:
-            r_torso = PERSON_SHOULDER_WIDTH/2 * (0.85 + 0.15*np.random.rand())
-        else:
-            r_torso = PERSON_SHOULDER_WIDTH/2.5 * (0.8 + 0.2*np.random.rand())
+        # Anatomically correct taper from shoulders to waist
+        if h > 1.70:  # Upper shoulders - widest
+            r_torso = PERSON_SHOULDER_WIDTH/2 * (0.90 + 0.10*np.random.rand())
+        elif h > 1.20:  # Mid chest
+            r_torso = PERSON_SHOULDER_WIDTH/2.2 * (0.85 + 0.15*np.random.rand())
+        elif h > 0.70:  # Lower chest/upper abdomen
+            r_torso = PERSON_SHOULDER_WIDTH/2.5 * (0.80 + 0.20*np.random.rand())
+        else:  # Waist - narrowest
+            r_torso = PERSON_SHOULDER_WIDTH/3.0 * (0.75 + 0.25*np.random.rand())
         
         x = person_x + r_torso * np.cos(theta)
         y = person_y + r_torso * np.sin(theta)
@@ -247,111 +369,142 @@ def generate_detailed_pedestrian(person_x, person_y, person_z, pose="standing"):
         points.append([x, y, z])
         heights.append(z)
     
-    # -------- CHEST (anterior detail) --------
-    for _ in range(500):
+    # -------- CHEST/FRONT (anterior detail - anatomical shape) --------
+    for _ in range(800):
         theta = np.random.uniform(-np.pi/3, np.pi/3)
-        h = np.random.uniform(0.57, 1.30)
-        r_chest = PERSON_CHEST_WIDTH/2 * (0.8 + 0.2*np.random.rand())
+        h = np.random.uniform(0.75, 1.70)
+        r_chest = PERSON_CHEST_WIDTH/2 * (0.85 + 0.15*np.random.rand())
         
+        # Front protrusion for realistic chest shape
         x = person_x + r_chest * np.cos(theta)
-        y = person_y + r_chest * np.sin(theta) * 0.5
+        y = person_y + r_chest * np.sin(theta) * 0.6  # Flatter on sides
         z = person_z + h
         
         points.append([x, y, z])
         heights.append(z)
     
     if pose == "standing":
-        # -------- ARMS (mega-enlarged, standing) --------
+        # -------- ARMS (massive, clearly visible) --------
         for arm_side in [-1, 1]:
-            # Upper arm
-            for _ in range(500):
+            # Upper arm (shoulder to elbow)
+            for _ in range(800):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(0.99, 1.60)
-                r_arm = 0.11
+                h = np.random.uniform(1.30, 2.10)
+                r_arm = 0.14  # Thick upper arms
                 
-                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.13) + r_arm * np.cos(theta)
-                y = person_y + r_arm * np.sin(theta) * 0.8
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.18) + r_arm * np.cos(theta)
+                y = person_y + r_arm * np.sin(theta) * 0.85
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
             
-            # Forearm
-            for _ in range(400):
+            # Forearm (elbow to wrist)
+            for _ in range(650):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(0.35, 0.99)
-                r_forearm = 0.10
+                h = np.random.uniform(0.45, 1.30)
+                r_forearm = 0.13  # Slightly thinner forearms
                 
-                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.18) + r_forearm * np.cos(theta)
-                y = person_y + r_forearm * np.sin(theta) * 0.8
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.24) + r_forearm * np.cos(theta)
+                y = person_y + r_forearm * np.sin(theta) * 0.85
+                z = person_z + h
+                
+                points.append([x, y, z])
+                heights.append(z)
+            
+            # Hands (denser clusters at wrists)
+            for _ in range(300):
+                theta = np.random.uniform(0, 2*np.pi)
+                r_hand = 0.10
+                h = np.random.uniform(0.35, 0.55)
+                
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.24) + r_hand * np.cos(theta)
+                y = person_y + r_hand * np.sin(theta) * 0.85
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
     
     elif pose == "walking":
-        # -------- ARMS (mega-enlarged, walking) --------
+        # -------- ARMS (walking swing motion) --------
         for arm_idx, arm_side in enumerate([-1, 1]):
             angle_offset = arm_idx * np.pi
             
-            for _ in range(500):
+            # Upper arm
+            for _ in range(800):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(0.70, 1.60)
-                r_arm = 0.11
-                swing = 0.22 * np.cos(angle_offset)
+                h = np.random.uniform(0.90, 2.10)
+                r_arm = 0.14
+                swing = 0.30 * np.cos(angle_offset)  # Wider swing
                 
-                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.13 + swing) + r_arm * np.cos(theta)
-                y = person_y + r_arm * np.sin(theta) * 0.8
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.18 + swing) + r_arm * np.cos(theta)
+                y = person_y + r_arm * np.sin(theta) * 0.85
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
             
-            for _ in range(400):
+            # Forearm
+            for _ in range(650):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(0.28, 0.99)
-                r_forearm = 0.10
-                swing = 0.22 * np.cos(angle_offset + np.pi/2)
+                h = np.random.uniform(0.35, 1.30)
+                r_forearm = 0.13
+                swing = 0.30 * np.cos(angle_offset + np.pi/2)
                 
-                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.22 + swing) + r_forearm * np.cos(theta)
-                y = person_y + r_forearm * np.sin(theta) * 0.8
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.30 + swing) + r_forearm * np.cos(theta)
+                y = person_y + r_forearm * np.sin(theta) * 0.85
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
     
     elif pose == "arms_up":
-        # -------- ARMS RAISED UP (mega-enlarged) --------
+        # -------- ARMS RAISED (very dramatic, highly visible) --------
         for arm_side in [-1, 1]:
-            for _ in range(600):
+            # Upper arm (pointing upward)
+            for _ in range(900):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(1.27, 2.15)
-                r_arm = 0.11
+                h = np.random.uniform(1.70, 2.85)
+                r_arm = 0.14
                 
-                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.22) + r_arm * np.cos(theta)
-                y = person_y + r_arm * np.sin(theta) * 0.8
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.30) + r_arm * np.cos(theta)
+                y = person_y + r_arm * np.sin(theta) * 0.85
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
             
-            for _ in range(500):
+            # Forearm (reaching high)
+            for _ in range(750):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(1.40, 2.37)
-                r_forearm = 0.10
+                h = np.random.uniform(1.85, 3.15)  # Reaches above head
+                r_forearm = 0.13
                 
-                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.30) + r_forearm * np.cos(theta)
-                y = person_y + r_forearm * np.sin(theta) * 0.8
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.40) + r_forearm * np.cos(theta)
+                y = person_y + r_forearm * np.sin(theta) * 0.85
+                z = person_z + h
+                
+                points.append([x, y, z])
+                heights.append(z)
+            
+            # Hands raised (very visible at top)
+            for _ in range(350):
+                theta = np.random.uniform(0, 2*np.pi)
+                r_hand = 0.11
+                h = np.random.uniform(3.00, 3.25)
+                
+                x = person_x + arm_side * (PERSON_SHOULDER_WIDTH/2 + 0.40) + r_hand * np.cos(theta)
+                y = person_y + r_hand * np.sin(theta) * 0.85
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
     
-    # -------- HIPS/PELVIS (mega-enlarged) --------
-    for _ in range(700):
+    # -------- HIPS/PELVIS (massive, anatomically correct) --------
+    for _ in range(1100):
         theta = np.random.uniform(0, 2*np.pi)
-        h = np.random.uniform(-0.15, 0.35)
-        r_hip = PERSON_SHOULDER_WIDTH/2.3 * (0.8 + 0.2*np.random.rand())
+        h = np.random.uniform(-0.20, 0.45)
+        r_hip = PERSON_SHOULDER_WIDTH/2.5 * (0.85 + 0.15*np.random.rand())
         
         x = person_x + r_hip * np.cos(theta)
         y = person_y + r_hip * np.sin(theta)
@@ -361,32 +514,73 @@ def generate_detailed_pedestrian(person_x, person_y, person_z, pose="standing"):
         heights.append(z)
     
     if pose == "standing":
-        # -------- LEGS (mega-enlarged) --------
+        # -------- LEGS (massive cylindrical legs) --------
         for leg_side in [-PERSON_DEPTH/2, PERSON_DEPTH/2]:
-            for _ in range(700):
+            # Thighs (upper leg)
+            for _ in range(1000):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(-PERSON_LEG_LENGTH, 0.35)
-                r_leg = 0.16
+                h = np.random.uniform(-1.00, 0.45)
+                r_thigh = 0.20  # Thick thighs
                 
-                x = person_x + r_leg * np.cos(theta)
-                y = person_y + leg_side + r_leg * np.sin(theta) * 0.9
+                x = person_x + r_thigh * np.cos(theta)
+                y = person_y + leg_side + r_thigh * np.sin(theta) * 0.9
+                z = person_z + h
+                
+                points.append([x, y, z])
+                heights.append(z)
+            
+            # Lower legs (calves)
+            for _ in range(850):
+                theta = np.random.uniform(0, 2*np.pi)
+                h = np.random.uniform(-PERSON_LEG_LENGTH, -1.00)
+                r_calf = 0.17  # Slightly thinner calves
+                
+                x = person_x + r_calf * np.cos(theta)
+                y = person_y + leg_side + r_calf * np.sin(theta) * 0.9
+                z = person_z + h
+                
+                points.append([x, y, z])
+                heights.append(z)
+            
+            # Feet (dense at ground level)
+            for _ in range(400):
+                theta = np.random.uniform(0, 2*np.pi)
+                h = np.random.uniform(-PERSON_LEG_LENGTH - 0.15, -PERSON_LEG_LENGTH + 0.05)
+                r_foot = 0.15
+                
+                x = person_x + r_foot * np.cos(theta)
+                y = person_y + leg_side + r_foot * np.sin(theta)
                 z = person_z + h
                 
                 points.append([x, y, z])
                 heights.append(z)
     
     elif pose == "walking":
-        # -------- LEGS (mega-enlarged, walking) --------
+        # -------- LEGS (walking stride - asymmetric) --------
         for leg_idx, leg_side in enumerate([-PERSON_DEPTH/2, PERSON_DEPTH/2]):
-            stride = (-1)**(leg_idx + 1) * 0.30
+            stride = (-1)**(leg_idx + 1) * 0.40  # Wider stride
             
-            for _ in range(700):
+            # Thighs
+            for _ in range(1000):
                 theta = np.random.uniform(0, 2*np.pi)
-                h = np.random.uniform(-PERSON_LEG_LENGTH, 0.35)
-                r_leg = 0.16
+                h = np.random.uniform(-1.00, 0.45)
+                r_thigh = 0.20
                 
-                x = person_x + r_leg * np.cos(theta)
-                y = person_y + leg_side + stride + r_leg * np.sin(theta) * 0.9
+                x = person_x + r_thigh * np.cos(theta)
+                y = person_y + leg_side + stride + r_thigh * np.sin(theta) * 0.9
+                z = person_z + h
+                
+                points.append([x, y, z])
+                heights.append(z)
+            
+            # Lower legs
+            for _ in range(850):
+                theta = np.random.uniform(0, 2*np.pi)
+                h = np.random.uniform(-PERSON_LEG_LENGTH, -1.00)
+                r_calf = 0.17
+                
+                x = person_x + r_calf * np.cos(theta)
+                y = person_y + leg_side + stride + r_calf * np.sin(theta) * 0.9
                 z = person_z + h
                 
                 points.append([x, y, z])
@@ -579,9 +773,9 @@ def generate_realistic_building_with_details(building_x, building_y, building_wi
     
     return points, heights
 
-# ============= SCENE 1: ULTIMATE SCALE WITH DETAILED BUILDINGS =============
+# ============= SCENE 1: WITH TRUCK + CAR + 3 PEOPLE =============
 def generate_street_scene_1():
-    """Scene 1: ULTIMATE SCALE (250m × 50m) with realistic buildings"""
+    """Scene 1: TRUCK + CAR + 3 PEOPLE"""
     all_points = []
     all_heights = []
     
@@ -653,8 +847,13 @@ def generate_street_scene_1():
         all_heights.extend(tree_heights)
     
     print("  [Generating vehicles...]")
-    # -------- SEDAN CAR (60m ahead, center) --------
-    car_pts, car_heights = generate_sedan_car(60, 0.8, -1.8, car_yaw=0.10)
+    # -------- LARGE TRUCK (100m ahead, center-left lane) - REMOVAL TARGET --------
+    truck_pts, truck_heights = generate_commercial_truck(100, -3.0, -1.8, truck_yaw=0.05)
+    all_points.extend(truck_pts)
+    all_heights.extend(truck_heights)
+    
+    # -------- SEDAN CAR (150m ahead, center-right lane) --------
+    car_pts, car_heights = generate_sedan_car(150, 3.5, -1.8, car_yaw=-0.08)
     all_points.extend(car_pts)
     all_heights.extend(car_heights)
     
@@ -666,6 +865,11 @@ def generate_street_scene_1():
     
     # -------- PERSON 2 (80m ahead, right sidewalk, walking) --------
     person_pts, person_heights = generate_detailed_pedestrian(80, SCENE_WIDTH/2 - 1.6, -1.8, pose="walking")
+    all_points.extend(person_pts)
+    all_heights.extend(person_heights)
+    
+    # -------- PERSON 3 (180m ahead, right sidewalk, standing) - REMOVAL TARGET --------
+    person_pts, person_heights = generate_detailed_pedestrian(180, SCENE_WIDTH/2 - 1.5, -1.8, pose="standing")
     all_points.extend(person_pts)
     all_heights.extend(person_heights)
     
@@ -683,9 +887,9 @@ def generate_street_scene_1():
     
     return pcd
 
-# ============= SCENE 2: ULTIMATE SCALE WITH 3 PEOPLE (NO CAR) =============
+# ============= SCENE 2: NO TRUCK + CAR + 4 DIFFERENT PEOPLE =============
 def generate_street_scene_2():
-    """Scene 2: Same ultimate scale, 3 people, no car, more trees"""
+    """Scene 2: NO TRUCK, but +2 NEW PEOPLE"""
     all_points = []
     all_heights = []
     
@@ -733,8 +937,8 @@ def generate_street_scene_2():
         all_points.extend(building_pts)
         all_heights.extend(building_heights)
     
-    print("  [Generating 20 mega-trees...]")
-    # -------- TREES (20 MEGA TREES - MORE THAN SCENE 1) --------
+    print("  [Generating 18 mega-trees...]")
+    # -------- TREES (SAME 18 TREES) --------
     tree_positions = [
         [22, -SCENE_WIDTH/2 + 1.6, -2.3], [45, -SCENE_WIDTH/2 + 1.8, -2.3],
         [68, -SCENE_WIDTH/2 + 1.5, -2.3], [91, -SCENE_WIDTH/2 + 1.7, -2.3],
@@ -745,9 +949,7 @@ def generate_street_scene_2():
         [76, SCENE_WIDTH/2 - 1.8, -2.3], [99, SCENE_WIDTH/2 - 1.6, -2.3],
         [122, SCENE_WIDTH/2 - 1.7, -2.3], [145, SCENE_WIDTH/2 - 1.5, -2.3],
         [168, SCENE_WIDTH/2 - 1.8, -2.3], [191, SCENE_WIDTH/2 - 1.6, -2.3],
-        [214, SCENE_WIDTH/2 - 1.7, -2.3],
-        # NEW TREES
-        [230, -SCENE_WIDTH/2 + 1.6, -2.3], [240, SCENE_WIDTH/2 - 1.7, -2.3]
+        [214, SCENE_WIDTH/2 - 1.7, -2.3]
     ]
     
     for tree_pos in tree_positions:
@@ -755,19 +957,34 @@ def generate_street_scene_2():
         all_points.extend(tree_pts)
         all_heights.extend(tree_heights)
     
+    print("  [Generating vehicles...]")
+    # -------- TRUCK REMOVED (NO TRUCK IN SCENE 2) --------
+    
+    # -------- SEDAN CAR (150m ahead, center-right lane) - SAME AS SCENE 1 --------
+    car_pts, car_heights = generate_sedan_car(150, 3.5, -1.8, car_yaw=-0.08)
+    all_points.extend(car_pts)
+    all_heights.extend(car_heights)
+    
     print("  [Generating pedestrians...]")
-    # -------- PERSON 1 (40m, left, standing) --------
+    # -------- PERSON 1 (40m, left, standing) - SAME AS SCENE 1 --------
     person_pts, person_heights = generate_detailed_pedestrian(40, -SCENE_WIDTH/2 + 1.4, -1.8, pose="standing")
     all_points.extend(person_pts)
     all_heights.extend(person_heights)
     
-    # -------- PERSON 2 (80m, right, walking) --------
+    # -------- PERSON 2 (80m, right, walking) - SAME AS SCENE 1 --------
     person_pts, person_heights = generate_detailed_pedestrian(80, SCENE_WIDTH/2 - 1.6, -1.8, pose="walking")
     all_points.extend(person_pts)
     all_heights.extend(person_heights)
     
-    # -------- PERSON 3 (120m, left, arms up) - NEW VISIBLE PERSON --------
+    # -------- PERSON 3 REMOVED (was at 180m) --------
+    
+    # -------- NEW PERSON 4 (120m, left sidewalk, arms up) - ADDITION TARGET --------
     person_pts, person_heights = generate_detailed_pedestrian(120, -SCENE_WIDTH/2 + 1.5, -1.8, pose="arms_up")
+    all_points.extend(person_pts)
+    all_heights.extend(person_heights)
+    
+    # -------- NEW PERSON 5 (200m, right sidewalk, walking) - ADDITION TARGET --------
+    person_pts, person_heights = generate_detailed_pedestrian(200, SCENE_WIDTH/2 - 1.7, -1.8, pose="walking")
     all_points.extend(person_pts)
     all_heights.extend(person_heights)
     
@@ -803,28 +1020,31 @@ def visualize_pcd(pcd, window_name="Point Cloud", point_size=0.8):
 # ============= MAIN =============
 if __name__ == "__main__":
     print("\n" + "="*100)
-    print(" "*15 + "ULTIMATE PROFESSIONAL LIDAR POINT CLOUD GENERATION")
-    print(" "*15 + "250m × 50m Scene with Realistic Buildings, Windows, Doors")
-    print(" "*20 + "MEGA-ENLARGED Pedestrians + Ultra-High Density Point Cloud")
+    print(" "*15 + "BIDIRECTIONAL CHANGE DETECTION - LIDAR POINT CLOUD GENERATION")
+    print(" "*20 + "Scene 1: Truck + Car + 3 People")
+    print(" "*20 + "Scene 2: NO Truck + Car + 4 Different People")
     print("="*100)
     
-    print(f"\n[ULTIMATE SCENE SPECIFICATIONS]")
-    print(f"  Scene dimensions: {SCENE_LENGTH}m length × {SCENE_WIDTH}m width (MAXIMUM SCALE)")
-    print(f"  Sidewalk width: {SIDEWALK_WIDTH}m each side (ultra-wide)")
-    print(f"  Ground elevation: -2.3m (LiDAR mounted at 2.3m)")
-    print(f"  Detection range: {LIDAR_RANGE_MAX}m (extended Velodyne 64)")
-    print(f"  Point density: Mega-high (150K-180K points per scene)")
-    print(f"  Pedestrian height: {PERSON_HEIGHT:.2f}m (40% larger - HIGHLY VISIBLE)")
-    
-    print(f"\n  [BUILDING DETAILS]")
-    print(f"    • Height: {BUILDING_HEIGHT_MIN:.1f}m - {BUILDING_HEIGHT_MAX:.1f}m")
-    print(f"    • Window dimensions: {BUILDING_WINDOW_WIDTH}m × {BUILDING_WINDOW_HEIGHT}m")
-    print(f"    • Window spacing: {BUILDING_WINDOW_SPACING}m")
-    print(f"    • Door dimensions: {BUILDING_DOOR_WIDTH}m × {BUILDING_DOOR_HEIGHT}m")
-    print(f"    • Realistic facade with detailed windows & doors")
+    print(f"\n[BIDIRECTIONAL CHANGE TARGETS]")
+    print(f"  REMOVALS (in Scene 1, NOT in Scene 2) → BLUE:")
+    print(f"    • Large commercial truck at 100m, center-left")
+    print(f"    • Person standing at 180m, right sidewalk")
+    print(f"  ADDITIONS (in Scene 2, NOT in Scene 1) → RED:")
+    print(f"    • MASSIVE person (3.15m tall!) with arms up at 120m, left sidewalk")
+    print(f"    • MASSIVE person (3.15m tall!) walking at 200m, right sidewalk")
+    print(f"  UNCHANGED:")
+    print(f"    • Sedan car at 150m")
+    print(f"    • Person at 40m (left)")
+    print(f"    • Person at 80m (right)")
+    print(f"\n  [HUMAN SIZE UPGRADE: 80% LARGER!]")
+    print(f"    • Height: 3.15m (was 2.45m)")
+    print(f"    • Shoulder width: 0.90m")
+    print(f"    • Very detailed anatomy: head, neck, torso, arms, hands, hips, thighs, calves, feet")
+    print(f"    • Point density: 8,000-10,000 points per person (ultra-high)")
+    print(f"    • Arms-up pose reaches 3.25m height - EXTREMELY VISIBLE!")
     
     print("\n" + "-"*100)
-    print("[1/4] SCENE 1: ULTIMATE STREET WITH SEDAN CAR + 2 PEDESTRIANS")
+    print("[1/2] SCENE 1: TRUCK + CAR + 3 PEOPLE")
     print("-"*100)
     
     print("\n  Generating Scene 1...")
@@ -835,17 +1055,13 @@ if __name__ == "__main__":
     print(f"\n[✓] Scene 1 COMPLETE")
     print(f"    File: ultimate_scene_1_250m_detailed.ply")
     print(f"    Total points: {len(pcd_scene1.points):,}")
-    print(f"    Scene contents:")
-    print(f"      • Ground plane (250m × 50m, MEGA-DENSE)")
-    print(f"      • Sidewalks ({SIDEWALK_WIDTH}m width, both sides)")
-    print(f"      • 6 realistic multi-story buildings WITH detailed windows/doors")
-    print(f"      • 18 mega-realistic street trees")
-    print(f"      • 1 enlarged sedan car (60m ahead)")
-    print(f"      • 1 MEGA-ENLARGED standing pedestrian (40m, left) - CLEARLY VISIBLE")
-    print(f"      • 1 MEGA-ENLARGED walking pedestrian (80m, right) - CLEARLY VISIBLE")
+    print(f"    Contents:")
+    print(f"      • 1 large commercial truck (100m) → WILL BE REMOVED")
+    print(f"      • 1 sedan car (150m) → STAYS")
+    print(f"      • 3 pedestrians (40m, 80m, 180m) → 180m WILL BE REMOVED")
     
     print("\n" + "-"*100)
-    print("[2/4] SCENE 2: ULTIMATE STREET WITH 3 PEDESTRIANS (NO CAR)")
+    print("[2/2] SCENE 2: NO TRUCK + CAR + 4 DIFFERENT PEOPLE")
     print("-"*100)
     
     print("\n  Generating Scene 2...")
@@ -856,108 +1072,37 @@ if __name__ == "__main__":
     print(f"\n[✓] Scene 2 COMPLETE")
     print(f"    File: ultimate_scene_2_250m_3people.ply")
     print(f"    Total points: {len(pcd_scene2.points):,}")
-    print(f"    Scene contents:")
-    print(f"      • Ground plane (250m × 50m, MEGA-DENSE)")
-    print(f"      • Sidewalks ({SIDEWALK_WIDTH}m width, both sides)")
-    print(f"      • 6 realistic multi-story buildings (same as Scene 1)")
-    print(f"      • 20 mega-realistic street trees (+2 new)")
-    print(f"      • 0 cars (REMOVED)")
-    print(f"      • 1 MEGA-ENLARGED standing pedestrian (40m, left)")
-    print(f"      • 1 MEGA-ENLARGED walking pedestrian (80m, right)")
-    print(f"      • 1 MEGA-ENLARGED pedestrian with arms raised (120m, left) - NEW")
+    print(f"    Contents:")
+    print(f"      • 0 trucks (REMOVED)")
+    print(f"      • 1 sedan car (150m) → STAYS")
+    print(f"      • 4 MASSIVE pedestrians (3.15m tall, 80% larger!):")
+    print(f"          - 40m, 80m (SAME as Scene 1)")
+    print(f"          - 120m (NEW - arms raised to 3.25m!) → ADDITION - ULTRA VISIBLE")
+    print(f"          - 200m (NEW - walking) → ADDITION - ULTRA VISIBLE")
+    print(f"      • Each new person: ~8,500 points with anatomical detail")
     
-    print("\n" + "-"*100)
-    print("[3/4] CHANGE DETECTION TARGETS")
-    print("-"*100)
+    print("\n" + "="*100)
+    print("CHANGE DETECTION SUMMARY")
+    print("="*100)
     
-    point_diff = len(pcd_scene2.points) - len(pcd_scene1.points)
-    print(f"\n  Scene 1 total points: {len(pcd_scene1.points):,}")
-    print(f"  Scene 2 total points: {len(pcd_scene2.points):,}")
-    print(f"  Point difference: {point_diff:,}")
-    
-    print(f"\n  [EXPECTED 3DCDNET DETECTION TARGETS]")
-    print(f"    ✗ REMOVAL: Sedan car at (60m, 0.8m, -1.8m)")
-    print(f"    ✓ ADDITION: Person (arms up) at (120m, -{SCENE_WIDTH/2 - 1.5}m, -1.8m)")
-    print(f"    ✓ ADDITION: 2 extra trees at (230m, -{SCENE_WIDTH/2 - 1.6}m) and (240m, +{SCENE_WIDTH/2 - 1.7}m)")
-    
-    print("\n" + "-"*100)
-    print("[4/4] PROFESSIONAL GEOMETRY SPECIFICATIONS")
-    print("-"*100)
-    
-    print(f"\n  [MEGA-ENLARGED SEDAN CAR - 35% LARGER]")
-    print(f"    • Length: {CAR_LENGTH:.2f}m | Width: {CAR_WIDTH:.2f}m | Height: {CAR_HEIGHT:.2f}m")
-    print(f"    • Roof: {CAR_ROOF_HEIGHT:.2f}m | Bumper: {CAR_BUMPER_HEIGHT:.2f}m")
-    print(f"    • Components: Body, windshield, roof rack, mirrors, 4 wheels, bumpers")
-    print(f"    • Point density: 6000-7000 points per car")
-    
-    print(f"\n  [MEGA-ENLARGED PEDESTRIANS - 40% LARGER (HIGHLY VISIBLE)]")
-    print(f"    • Height: {PERSON_HEIGHT:.2f}m (was {1.75:.2f}m)")
-    print(f"    • Shoulder width: {PERSON_SHOULDER_WIDTH:.2f}m")
-    print(f"    • Head radius: {PERSON_HEAD_RADIUS:.3f}m")
-    print(f"    • Components: Head, neck, torso, arms, chest, hips, legs")
-    print(f"    • Poses: Standing, Walking, Arms Raised")
-    print(f"    • Point density: 4500-5500 points per person")
-    
-    print(f"\n  [MEGA-REALISTIC TREES - 40% LARGER]")
-    print(f"    • Trunk radius: {TREE_TRUNK_RADIUS:.2f}m | Canopy radius: {TREE_CANOPY_RADIUS:.2f}m")
-    print(f"    • Height: {TREE_CANOPY_HEIGHT:.2f}m | Canopy base: {TREE_CANOPY_BASE:.2f}m")
-    print(f"    • Components: Tapered trunk, primary+secondary branches, sparse foliage")
-    print(f"    • Point density: 8000-9000 points per tree")
-    
-    print(f"\n  [REALISTIC BUILDINGS WITH ARCHITECTURAL DETAILS]")
-    print(f"    • Count: 6 buildings (3 per side)")
-    print(f"    • Height range: {BUILDING_HEIGHT_MIN:.1f}m - {BUILDING_HEIGHT_MAX:.1f}m")
-    print(f"    • Features:")
-    print(f"        - Windows: {BUILDING_WINDOW_WIDTH}m × {BUILDING_WINDOW_HEIGHT}m grid pattern")
-    print(f"        - Window spacing: {BUILDING_WINDOW_SPACING}m")
-    print(f"        - Doors: {BUILDING_DOOR_WIDTH}m × {BUILDING_DOOR_HEIGHT}m at ground level")
-    print(f"        - Dense edges for sharp geometry")
-    print(f"        - Detailed roof edges")
-    print(f"    • Point density: 7000+ points per building")
+    print(f"\n  Expected detection results:")
+    print(f"    🔵 BLUE (Removals): Truck (100m) + Person (180m)")
+    print(f"    🔴 RED (Additions): Person (120m) + Person (200m)")
+    print(f"    ⚪ Gray (No change): Car (150m) + Persons (40m, 80m) + all buildings/trees")
     
     print("\n" + "="*100)
     print("VISUALIZATION")
     print("="*100)
     
-    print("\n[>>> Displaying Scene 1 - 250m Street with Sedan + 2 MEGA-ENLARGED Pedestrians <<<]")
-    print("  Display resolution: 2560×1440 (Ultra-HD for pedestrian visibility)")
-    print("  Pedestrian height: 2.45m (40% enlarged - CLEARLY VISIBLE in point cloud)")
-    print("  Controls: Left-click drag=rotate | Scroll=zoom | Right-click drag=pan")
-    print("  Close window to view Scene 2...")
-    visualize_pcd(pcd_scene1, "Scene 1: Ultimate 250m Street with Sedan + 2 MEGA-Pedestrians", point_size=0.7)
+    print("\n[>>> Displaying Scene 1 <<<]")
+    visualize_pcd(pcd_scene1, "Scene 1: Truck + Car + 3 People", point_size=0.7)
     
-    print("\n[>>> Displaying Scene 2 - 250m Street with 3 MEGA-ENLARGED Pedestrians (No Car) <<<]")
-    print("  Display resolution: 2560×1440 (Ultra-HD)")
-    print("  3 mega-enlarged pedestrians CLEARLY VISIBLE in point cloud")
-    print("  Controls: Left-click drag=rotate | Scroll=zoom | Right-click drag=pan")
-    print("  Close window to complete...")
-    visualize_pcd(pcd_scene2, "Scene 2: Ultimate 250m Street with 3 MEGA-Pedestrians + Detailed Buildings", point_size=0.7)
+    print("\n[>>> Displaying Scene 2 <<<]")
+    visualize_pcd(pcd_scene2, "Scene 2: No Truck + Car + 4 People", point_size=0.7)
     
     print("\n" + "="*100)
-    print("[GENERATION COMPLETE - ULTIMATE QUALITY]")
+    print("[GENERATION COMPLETE]")
     print("="*100)
-    
-    print(f"\n  Files saved in: {SAVE_DIR}")
-    print(f"    ✓ ultimate_scene_1_250m_detailed.ply ({len(pcd_scene1.points):,} points)")
-    print(f"    ✓ ultimate_scene_2_250m_3people.ply ({len(pcd_scene2.points):,} points)")
-    
-    print(f"\n  ULTIMATE QUALITY METRICS:")
-    print(f"    • Scene scale: 250m × 50m (MAXIMUM)")
-    print(f"    • Point density: 150K-180K points per scene (MEGA-HIGH)")
-    print(f"    • Pedestrian height: 2.45m (40% enlarged - HIGHLY VISIBLE)")
-    print(f"    • Geometry accuracy: 82-88% vs real Velodyne 64")
-    print(f"    • Building details: Realistic windows, doors, architectural features")
-    print(f"    • Object realism: Professional-grade (KITTI++ enhanced)")
-    print(f"    • Change detection targets: Clear and DISTINCTLY visible")
-    
-    print(f"\n  [OPTIMIZED FOR 3DCDNET TRAINING]")
-    print(f"    These ULTIMATE-SCALE, MEGA-DENSITY point clouds are optimized for:")
-    print(f"      • Deep learning-based 3D change detection")
-    print(f"      • Pedestrian detection and tracking")
-    print(f"      • Object appearance/disappearance scenarios")
-    print(f"      • 3DCDNet, PointNet++, and similar architectures")
-    print(f"      • Semantic and instance segmentation")
-    print(f"      • Real-world autonomous driving scenarios")
-    
+    print(f"\n  Files saved: {SAVE_DIR}")
+    print(f"  Ready for 3D change detection!")
     print("\n" + "="*100 + "\n")
-
